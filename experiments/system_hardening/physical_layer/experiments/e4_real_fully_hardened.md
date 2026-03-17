@@ -1,0 +1,51 @@
+## Attempting to gain access to a fully hardened system
+
+### Objectives:
+- Demonstrate that by using mitigation techniques provided in this lab, physical vector attacks can be prevented
+- Mitigation Techniques:
+    - Full Disk Encryption
+    - explicitly disabling "Boot from USB/PXE"
+    - BIOS / UEFI Administrator Password
+    - Secure Boot
+    - Hard Disk Password
+    
+### Results
+- Successful Decryption: The volume was successfully unlocked using Hiren’s BootCD PE (Native) and subsequently via Linux
+- Hypothesis Correction: The GUID found in the metadata is a Resource Identifier, not the Recovery Key itself. It exists to help a user or system find the matching 48-digit key
+- Vulnerability: While Confidentiality was maintained until the key was provided, Availability was never protected; an attacker could still wipe the partition table or re-encrypt the encrypted data
+- note: original disk was never truly decrypted instead a mapper (a kind of translator) was created essentially grabbing encrypted data into RAM and producing decrypted output upon request. A virtual block device under /dev/mapper was created signifying this translator
+
+### Environment
+- Target: Windows machine with BitLocker enabled (XTS-AES 128-bit).
+- Attacker: Live Linux USB / Hiren’s BootCD PE (WinPE environment).
+
+### Execution Steps:
+Target Setup
+1. ecnrypted disk via Bitlocker
+
+Attacker Setup
+1. Ventoy on USB (to be able to boot several OSs from one USB drive)
+2. installed .iso images on USB drive (Hiren's Windows and Linux)
+
+Decrypting via Hiren's
+1. Booted the target machine into Hiren’s BootCD PE via Ventoy.
+2. Used diskpart to identify the "BitLocker Encrypted" volume.
+3. Opened cmd and executed 
+```
+manage-bde -unlock <your-disk> -RecoveryPassword 48-DIGIT-KEY
+```
+4. The drive immediately became accessible in File Explorer. CRUD operations were performed successfully.
+
+Decrypting via Linux
+1. Booted into Live Linux USB.
+2. Identified partition via lsblk -f.
+3. Created the decrypted mapper
+```
+sudo cryptsetup bitlkOpen <your-partition> win_vault
+```
+4. Provide 48-digit recovery key
+5. No error occured here compared to last experiment confirming that tools are operational and the problem was with providing incoorect recovery key
+6. Mount decrypted volume
+```
+sudo mount /dev/mapper/win_vault /mnt
+```
